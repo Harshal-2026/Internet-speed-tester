@@ -172,6 +172,158 @@ function clearDatabase() {
 }
 
 // -------------------------------------------------------------
+// CURSOR FOLLOWER ANIMATION (LIQUID DROPLETS)
+// -------------------------------------------------------------
+class CursorDroplets {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.droplets = [];
+    this.mouseX = null;
+    this.mouseY = null;
+    this.lastMouseX = null;
+    this.lastMouseY = null;
+    this.resize();
+    
+    // Bind mousemove
+    window.addEventListener('mousemove', (e) => {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
+      
+      // Calculate speed of cursor
+      let speed = 0;
+      if (this.lastMouseX !== null && this.lastMouseY !== null) {
+        const dx = this.mouseX - this.lastMouseX;
+        const dy = this.mouseY - this.lastMouseY;
+        speed = Math.sqrt(dx * dx + dy * dy);
+      }
+      
+      // Spawn droplets proportional to speed
+      const spawnCount = Math.min(3, Math.floor(speed / 6) + 1);
+      for (let i = 0; i < spawnCount; i++) {
+        this.spawn(this.mouseX, this.mouseY, speed);
+      }
+      
+      this.lastMouseX = this.mouseX;
+      this.lastMouseY = this.mouseY;
+    });
+    
+    // Bind mouseleave
+    window.addEventListener('mouseleave', () => {
+      this.mouseX = null;
+      this.mouseY = null;
+      this.lastMouseX = null;
+      this.lastMouseY = null;
+    });
+    
+    window.addEventListener('resize', () => this.resize());
+    
+    // Start animation loop
+    const tick = () => {
+      this.update();
+      this.draw();
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  
+  resize() {
+    this.canvas.width = window.innerWidth * window.devicePixelRatio;
+    this.canvas.height = window.innerHeight * window.devicePixelRatio;
+    this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+  
+  spawn(x, y, cursorSpeed) {
+    // Spread velocity slightly
+    const angle = Math.random() * Math.PI * 2;
+    const spread = 0.2 + Math.random() * 1.5;
+    
+    // Slight drift opposite to mouse direction if cursor speed is high
+    let vx = Math.cos(angle) * spread;
+    let vy = Math.sin(angle) * spread - 0.2; // default drift up slightly
+    
+    const size = 3.0 + Math.random() * 5.0; // size of droplet
+    
+    // Color palette: bioluminescent teal, cyan, blue
+    const r = Math.random();
+    let color = 'rgba(0, 242, 254, '; // neon cyan
+    if (r < 0.3) {
+      color = 'rgba(79, 172, 254, '; // soft blue
+    } else if (r < 0.6) {
+      color = 'rgba(5, 239, 178, '; // seafoam green
+    }
+    
+    this.droplets.push({
+      x: x,
+      y: y,
+      vx: vx,
+      vy: vy,
+      size: size,
+      originalSize: size,
+      alpha: 0.95,
+      color: color,
+      wobbleSpeed: 0.05 + Math.random() * 0.15,
+      wobbleOffset: Math.random() * Math.PI * 2,
+      life: 1.0, // normalized lifetime from 1.0 down to 0
+      decay: 0.015 + Math.random() * 0.02
+    });
+  }
+  
+  update() {
+    for (let i = this.droplets.length - 1; i >= 0; i--) {
+      const d = this.droplets[i];
+      
+      // Physics: gravity pulls down, air friction
+      d.vy += 0.12; // gravity
+      d.vx *= 0.96;
+      d.vy *= 0.96;
+      
+      d.x += d.vx;
+      d.y += d.vy;
+      
+      // Lifespan decay
+      d.life -= d.decay;
+      d.alpha = Math.max(0, d.life * 0.95);
+      d.size = d.originalSize * d.life;
+      
+      if (d.life <= 0 || d.size < 0.5) {
+        this.droplets.splice(i, 1);
+      }
+    }
+  }
+  
+  draw() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.canvas.width / window.devicePixelRatio, this.canvas.height / window.devicePixelRatio);
+    
+    this.droplets.forEach(d => {
+      ctx.save();
+      ctx.beginPath();
+      
+      // Calculate liquid wobble using sine wave over time
+      const time = Date.now() * 0.005;
+      const wobble = Math.sin(time * d.wobbleSpeed + d.wobbleOffset) * 0.15;
+      
+      // Stretch droplet vertically if falling fast
+      const speedY = Math.abs(d.vy);
+      const stretch = Math.min(0.4, speedY * 0.04);
+      
+      const rx = d.size * (1 - stretch + wobble);
+      const ry = d.size * (1 + stretch - wobble);
+      
+      // Draw liquid droplet using ellipse
+      ctx.ellipse(d.x, d.y, Math.max(0.1, rx), Math.max(0.1, ry), Math.atan2(d.vy, d.vx) - Math.PI / 2, 0, Math.PI * 2);
+      
+      ctx.fillStyle = d.color + d.alpha + ')';
+      ctx.shadowBlur = d.size * 1.8;
+      ctx.shadowColor = d.color.replace(/, \)$/, ', 0.6)');
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+}
+
+// -------------------------------------------------------------
 // PARTICLE SYSTEM (VISUALIZATION ENGINE)
 // -------------------------------------------------------------
 class ParticleSystem {
@@ -572,6 +724,7 @@ class SparklineGraph {
 let particleSystem = null;
 let speedGauge = null;
 let sparklineGraph = null;
+let cursorDroplets = null;
 
 // Initialize layout elements, canvases, and start animation frames
 function initAnimationLoops() {
@@ -2438,6 +2591,7 @@ window.addEventListener('load', async () => {
     
     // 2. Initialize Canvas elements and start animation loops
     initAnimationLoops();
+    cursorDroplets = new CursorDroplets(document.getElementById('cursor-canvas'));
     
     // 3. Bind Event listeners
     setupEventListeners();
