@@ -71,10 +71,3 @@ To deliver a premium, responsive UX, several front-end optimizations are active:
    - We map speed values to needle percentages using a piece-wise linear interpolation curve across thresholds `[0, 1, 5, 10, 50, 100, 250, 500, 1000]`. This keeps low-speed, mid-speed, and gigabit fiber tests all visually engaging and clearly readable.
 4. **Native Exporter**:
    - Rather than relying on heavy HTML-to-Image libraries, the result card is drawn directly onto an off-screen HTML5 Canvas and exported as a high-resolution 960x640 `.png`. This guarantees speed, removes external package weight, and avoids CSS rendering errors.
-5. **Liquid Droplet Cursor Simulation**:
-   - Renders interactive fluid trails using a full-viewport `<canvas>` element layered above the UI with pointer events deactivated.
-   - Droplets are drawn as dynamic ellipses `ctx.ellipse()` where the minor and major axes ($R_x, R_y$) scale dynamically based on cursor movement vectors, gravity acceleration ($g$), and random surface tension wobble harmonics:
-     $$R_x = R_{\text{base}} \cdot (1 - \text{stretch}_{\text{motion}} + \text{wobble}_{\text{harmonic}})$$
-     $$R_y = R_{\text{base}} \cdot (1 + \text{stretch}_{\text{motion}} - \text{wobble}_{\text{harmonic}})$$
-   - Spawning quantities and initial launch speeds correlate directly to cursor velocity vectors. Individual droplet decay models apply drag coefficients and linear opacity fades to guarantee a fluid 60 FPS repaint.
-
