@@ -1,0 +1,16 @@
+{
+  "name": "aerospeed",
+  "version": "1.0.0",
+  "description": "Premium Speed Test Visualizer & History Analytics",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx -y serve ."
+  },
+  "keywords": [
+    "speedtest",
+    "visualizer",
+    "indexeddb"
+  ],
+  "author": "Antigravity",
+  "license": "ISC"
+}
