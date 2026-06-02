@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroSpeed - Premium Internet Speed Visualizer & Analytics</title>
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="AeroSpeed is a beautiful, client-side internet speed test with persistence. Track download, upload, ping, and jitter over time with interactive analytics.">
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- CSS Styling -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Decorative background elements -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <i class="fa-solid fa-bolt-lightning"></i>
+        </div>
+        <span class="brand-name">AeroSpeed</span>
+      </div>
+      
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="test-tab">
+          <i class="fa-solid fa-gauge-high"></i>
+          <span>Speed Test</span>
+        </button>
+        <button class="nav-item" data-tab="analytics-tab">
+          <i class="fa-solid fa-chart-line"></i>
+          <span>Analytics</span>
+        </button>
+        <button class="nav-item" data-tab="history-tab">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span>Test History</span>
+        </button>
+        <button class="nav-item" data-tab="share-tab" id="nav-share-tab">
+          <i class="fa-solid fa-share-nodes"></i>
+          <span>Result Card</span>
+        </button>
+        <button class="nav-item" data-tab="tools-tab">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Tools & Settings</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="connection-status">
+          <span class="status-indicator online"></span>
+          <span class="status-text">Network Online</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top header bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1 id="page-title">Speed Test Console</h1>
+          <p id="page-subtitle" class="text-muted">Measure your real-time internet throughput</p>
+        </div>
+        <div class="header-right">
+          <div class="server-badge" id="active-server-badge">
+            <i class="fa-solid fa-server"></i>
+            <span id="current-server-name">Auto-Detecting Server</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Views (Tabs) -->
+      <div class="tab-content-container">
+        
+        <!-- SPEED TEST TAB -->
+        <section class="tab-panel active" id="test-tab">
+          <div class="test-layout">
+            <div class="gauge-card">
+              <!-- Particle effect and gauge container -->
+              <div class="canvas-container">
+                <canvas id="particle-canvas" width="500" height="500"></canvas>
+                <canvas id="gauge-canvas" width="500" height="500"></canvas>
+                
+                <div class="digital-display">
+                  <div class="display-label" id="test-phase">READY</div>
+                  <div class="display-value" id="current-speed">0.0</div>
+                  <div class="display-unit">Mbps</div>
+                </div>
+              </div>
+              
+              <div class="test-controls">
+                <button class="btn btn-primary btn-large" id="start-test-btn">
+                  <i class="fa-solid fa-play"></i> Start Test
+                </button>
+                <button class="btn btn-danger btn-large hidden" id="cancel-test-btn">
+                  <i class="fa-solid fa-xmark"></i> Cancel Test
+                </button>
+              </div>
+            </div>
+
+            <!-- Real-time metrics grid -->
+            <div class="metrics-grid">
+              <div class="metric-box" id="metric-ping">
+                <div class="metric-icon pink-glow">
+                  <i class="fa-solid fa-arrow-turn-down"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-label">Ping / Latency</span>
+                  <div class="metric-val-group">
+                    <span class="metric-value" id="ping-val">-</span>
+                    <span class="metric-unit">ms</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="metric-box" id="metric-jitter">
+                <div class="metric-icon yellow-glow">
+                  <i class="fa-solid fa-wave-square"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-label">Jitter</span>
+                  <div class="metric-val-group">
+                    <span class="metric-value" id="jitter-val">-</span>
+                    <span class="metric-unit">ms</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="metric-box" id="metric-download">
+                <div class="metric-icon blue-glow">
+                  <i class="fa-solid fa-cloud-arrow-down"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-label">Download Speed</span>
+                  <div class="metric-val-group">
+                    <span class="metric-value" id="download-val">-</span>
+                    <span class="metric-unit">Mbps</span>
+                  </div>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" id="download-progress"></div>
+                </div>
+              </div>
+
+              <div class="metric-box" id="metric-upload">
+                <div class="metric-icon green-glow">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <div class="metric-details">
+                  <span class="metric-label">Upload Speed</span>
+                  <div class="metric-val-group">
+                    <span class="metric-value" id="upload-val">-</span>
+                    <span class="metric-unit">Mbps</span>
+                  </div>
+                </div>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" id="upload-progress"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ping Sparkline & Data Budget Card -->
+            <div class="sub-metrics-panel">
+              <div class="card sparkline-card">
+                <div class="card-header">
+                  <h3>Real-time Jitter & Latency Graph</h3>
+                </div>
+                <div class="sparkline-container">
+                  <canvas id="sparkline-canvas"></canvas>
+                </div>
+              </div>
+              
+              <div class="card data-budget-card">
+                <div class="card-header">
+                  <h3>Data Budget & Provider</h3>
+                </div>
+                <div class="data-budget-body">
+                  <div class="data-indicator">
+                    <div class="info-row">
+                      <span>Data Transferred:</span>
+                      <strong id="data-used-val">0.00 MB</strong>
+                    </div>
+                    <div class="info-row">
+                      <span>Data Limit (Max 100MB):</span>
+                      <span>100.0 MB</span>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar data-bar" id="data-budget-progress"></div>
+                    </div>
+                  </div>
+                  <div class="provider-info-box">
+                    <div class="provider-field">
+                      <span class="label">Detected Provider:</span>
+                      <strong class="val" id="isp-name-val">Loading...</strong>
+                    </div>
+                    <div class="provider-field">
+                      <span class="label">IP Address:</span>
+                      <span class="val" id="ip-address-val">Loading...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ANALYTICS TAB -->
+        <section class="tab-panel" id="analytics-tab">
+          <div class="analytics-header-controls">
+            <div class="toggle-group" id="granularity-toggle">
+              <button class="btn btn-toggle active" data-view="daily">Daily View</button>
+              <button class="btn btn-toggle" data-view="weekly">Weekly View</button>
+              <button class="btn btn-toggle" data-view="monthly">Monthly View</button>
+            </div>
+            
+            <div class="stats-summary-strip">
+              <div class="stat-badge">
+                <span class="badge-label">Avg Download</span>
+                <span class="badge-value" id="avg-download-val">0.0 Mbps</span>
+              </div>
+              <div class="stat-badge">
+                <span class="badge-label">Avg Upload</span>
+                <span class="badge-value" id="avg-upload-val">0.0 Mbps</span>
+              </div>
+              <div class="stat-badge">
+                <span class="badge-label">Avg Ping</span>
+                <span class="badge-value" id="avg-ping-val">0 ms</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="analytics-grid">
+            <!-- Main speed trend chart -->
+            <div class="card chart-large-card">
+              <div class="card-header">
+                <h3>Historical Connection Speeds</h3>
+                <span class="text-muted">Showing download vs upload trends over time</span>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="trend-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Reliability Score gauge/radial -->
+            <div class="card score-card">
+              <div class="card-header">
+                <h3>Connection Reliability</h3>
+              </div>
+              <div class="score-body">
+                <div class="radial-score-container">
+                  <div class="radial-ring">
+                    <svg viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="42" class="ring-bg"></circle>
+                      <circle cx="50" cy="50" r="42" class="ring-fill" id="reliability-ring" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+                    </svg>
+                    <div class="radial-value" id="reliability-score">0%</div>
+                  </div>
+                </div>
+                <div class="score-breakdown">
+                  <p class="score-description" id="reliability-msg">Perform a speed test or generate mock data to calculate your score.</p>
+                  <ul class="score-criteria">
+                    <li><i class="fa-solid fa-circle-check text-green"></i> Download &gt; 25 Mbps (4K UHD standard)</li>
+                    <li><i class="fa-solid fa-circle-check text-green"></i> Ping &lt; 50 ms (Low latency gaming)</li>
+                    <li><i class="fa-solid fa-circle-check text-green"></i> Jitter &lt; 10 ms (Smooth streaming/calls)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Time of Day Heatmap/Analysis -->
+            <div class="card time-analysis-card">
+              <div class="card-header">
+                <h3>Hourly Speed Analysis</h3>
+                <span class="text-muted">Identify peak hours of your connection performance</span>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="hourly-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- ISP Competitors / Average Speeds -->
+            <div class="card isp-card">
+              <div class="card-header">
+                <h3>ISP Speed Index</h3>
+                <span class="text-muted">Compare your average speed with local providers</span>
+              </div>
+              <div class="isp-body">
+                <div class="isp-list" id="isp-comparison-list">
+                  <!-- Generated dynamically in index.js -->
+                  <div class="isp-row">
+                    <span class="isp-name">Your Average</span>
+                    <div class="bar-container">
+                      <div class="bar user-bar" style="width: 0%"></div>
+                    </div>
+                    <span class="isp-speed">0 Mbps</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- HISTORY LOG TAB -->
+        <section class="tab-panel" id="history-tab">
+          <div class="history-controls">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="history-search" placeholder="Search by ISP, server or date...">
+            </div>
+            
+            <div class="history-actions">
+              <button class="btn btn-secondary" id="export-csv-btn">
+                <i class="fa-solid fa-file-export"></i> Export CSV
+              </button>
+              <label for="import-csv-file" class="btn btn-secondary cursor-pointer">
+                <i class="fa-solid fa-file-import"></i> Import CSV
+              </label>
+              <input type="file" id="import-csv-file" accept=".csv" class="hidden">
+              <button class="btn btn-danger" id="clear-all-history-btn">
+                <i class="fa-solid fa-trash-can"></i> Clear All
+              </button>
+            </div>
+          </div>
+
+          <div class="card table-card">
+            <div class="table-responsive">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Date &amp; Time</th>
+                    <th>ISP / Provider</th>
+                    <th>Ping</th>
+                    <th>Jitter</th>
+                    <th>Download</th>
+                    <th>Upload</th>
+                    <th>Server Location</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body">
+                  <tr>
+                    <td colspan="8" class="text-center text-muted py-8">
+                      <i class="fa-solid fa-box-open d-block fs-3 mb-2"></i>
+                      No test history found. Perform a test to see history.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="pagination-footer">
+              <span class="pagination-info" id="history-pagination-info">Showing 0 of 0 entries</span>
+              <div class="pagination-buttons">
+                <button class="btn btn-icon" id="prev-page-btn" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                <button class="btn btn-icon" id="next-page-btn" disabled><i class="fa-solid fa-chevron-right"></i></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- RESULT CARD TAB -->
+        <section class="tab-panel" id="share-tab">
+          <div class="share-layout">
+            <div class="card-preview-area">
+              <!-- Outer card container with style themes -->
+              <div class="share-card-container theme-neon" id="share-card-element">
+                <div class="share-card-inner">
+                  <!-- Design accents inside the card -->
+                  <div class="card-glow"></div>
+                  
+                  <div class="card-top">
+                    <div class="card-brand">
+                      <i class="fa-solid fa-bolt-lightning"></i>
+                      <span>AeroSpeed Result</span>
+                    </div>
+                    <div class="card-timestamp" id="card-date-str">June 02, 2026</div>
+                  </div>
+
+                  <div class="card-speed-hero">
+                    <div class="hero-download">
+                      <span class="hero-label">DOWNLOAD</span>
+                      <div class="hero-value-group">
+                        <span class="hero-value" id="card-download-val">0.0</span>
+                        <span class="hero-unit">Mbps</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card-specs-grid">
+                    <div class="spec-item">
+                      <span class="spec-lbl">UPLOAD</span>
+                      <span class="spec-val" id="card-upload-val">0.0 <span class="spec-unit">Mbps</span></span>
+                    </div>
+                    <div class="spec-item">
+                      <span class="spec-lbl">LATENCY</span>
+                      <span class="spec-val" id="card-ping-val">0 <span class="spec-unit">ms</span></span>
+                    </div>
+                    <div class="spec-item">
+                      <span class="spec-lbl">JITTER</span>
+                      <span class="spec-val" id="card-jitter-val">0 <span class="spec-unit">ms</span></span>
+                    </div>
+                    <div class="spec-item">
+                      <span class="spec-lbl">RELIABILITY</span>
+                      <span class="spec-val" id="card-reliability-val">0%</span>
+                    </div>
+                  </div>
+
+                  <div class="card-bottom">
+                    <div class="card-isp-details">
+                      <i class="fa-solid fa-wifi"></i>
+                      <div class="isp-meta">
+                        <span class="isp-name" id="card-isp-name">Local Network</span>
+                        <span class="isp-location" id="card-server-name">Chicago, US</span>
+                      </div>
+                    </div>
+                    <div class="card-tagline">speedtest.aerospeed.io</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card Controls -->
+            <div class="card share-controls-card">
+              <div class="card-header">
+                <h3>Customize Results Card</h3>
+                <span class="text-muted">Choose your aesthetic style and download card</span>
+              </div>
+              <div class="share-controls-body">
+                <div class="theme-selector-section">
+                  <span class="selector-title">Card Theme</span>
+                  <div class="theme-grid">
+                    <button class="btn btn-theme active" data-theme="neon">
+                      <span class="theme-swatch swatch-neon"></span> Cyberpunk Neon
+                    </button>
+                    <button class="btn btn-theme" data-theme="aurora">
+                      <span class="theme-swatch swatch-aurora"></span> Emerald Aurora
+                    </button>
+                    <button class="btn btn-theme" data-theme="sunset">
+                      <span class="theme-swatch swatch-sunset"></span> Crimson Sunset
+                    </button>
+                    <button class="btn btn-theme" data-theme="glass">
+                      <span class="theme-swatch swatch-glass"></span> Clear Obsidian
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="actions-section">
+                  <button class="btn btn-primary btn-large btn-full" id="download-card-btn">
+                    <i class="fa-solid fa-download"></i> Download Image (.PNG)
+                  </button>
+                  <button class="btn btn-secondary btn-full mt-2" id="copy-clipboard-btn">
+                    <i class="fa-solid fa-copy"></i> Copy Link to Clipboard
+                  </button>
+                  <div class="alert alert-success hidden" id="copy-alert">
+                    <i class="fa-solid fa-circle-check"></i> Results URL copied to clipboard!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TOOLS & SETTINGS TAB -->
+        <section class="tab-panel" id="tools-tab">
+          <div class="tools-grid">
+            
+            <!-- Server Configuration -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Speed Test Servers</h3>
+                <span class="text-muted">Configure connection nodes or switch behavior</span>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="server-mode-select">Testing Mode / Node</label>
+                  <select id="server-mode-select" class="form-control">
+                    <option value="auto">Auto-Detect Best Edge Server (Cloudflare)</option>
+                    <option value="cloudflare-use">Cloudflare US East Edge (Ashburn)</option>
+                    <option value="cloudflare-eu">Cloudflare EU West Edge (Frankfurt)</option>
+                    <option value="cloudflare-ap">Cloudflare Asia-Pacific Edge (Singapore)</option>
+                    <option value="mock-slow">Simulation - Throttle DSL (5 Mbps / 2 Mbps)</option>
+                    <option value="mock-medium">Simulation - Cable/Wi-Fi (50 Mbps / 15 Mbps)</option>
+                    <option value="mock-fast">Simulation - Fiber Gigabit (950 Mbps / 800 Mbps)</option>
+                  </select>
+                </div>
+                
+                <div class="alert alert-info">
+                  <i class="fa-solid fa-circle-info"></i>
+                  <strong>Simulation modes</strong> are useful for testing UI features, animations, and database aggregation settings without burning network cellular data budgets.
+                </div>
+              </div>
+            </div>
+
+            <!-- Mock Data Generation -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Historical Mock Data Tool</h3>
+                <span class="text-muted">Instantly populate 1 year of daily tests for testing</span>
+              </div>
+              <div class="card-body">
+                <p class="description mb-4">
+                  Generates daily entries spanning the last 12 months with realistic standard deviation, speed drops, and peak-hour discrepancies. This allows validating charts, aggregations, and rendering speeds of Chart.js.
+                </p>
+                <div class="form-group">
+                  <label for="mock-provider-select">Simulated ISP Provider</label>
+                  <select id="mock-provider-select" class="form-control">
+                    <option value="Comcast Xfinity">Comcast Xfinity</option>
+                    <option value="AT&T Fiber">AT&T Fiber</option>
+                    <option value="Spectrum">Spectrum Broadband</option>
+                    <option value="Google Fiber">Google Fiber</option>
+                  </select>
+                </div>
+                <div class="btn-group-row">
+                  <button class="btn btn-primary" id="generate-mock-data-btn">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Generate 1 Year Data
+                  </button>
+                  <button class="btn btn-secondary" id="clear-database-btn">
+                    <i class="fa-solid fa-trash-arrow-up"></i> Clear Database
+                  </button>
+                </div>
+                <div id="mock-progress-msg" class="text-muted fs-small mt-2"></div>
+              </div>
+            </div>
+
+            <!-- Background testing -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Background Test Simulation</h3>
+                <span class="text-muted">Simulate scheduled periodic testing</span>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="bg-test-toggle">
+                    <span class="slider"></span>
+                    <span class="toggle-label">Enable background speed test simulation</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label for="bg-test-interval">Test Interval (seconds for demo)</label>
+                  <select id="bg-test-interval" class="form-control">
+                    <option value="15">Every 15 Seconds (Rapid Demo)</option>
+                    <option value="60">Every 1 Minute</option>
+                    <option value="300">Every 5 Minutes</option>
+                  </select>
+                </div>
+                <div class="alert alert-warning">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  Note: In standard browsers, true background execution is constrained. This simulation runs as a background interval while the tab remains open, notifying you of speeds.
+                </div>
+              </div>
+            </div>
+
+            <!-- Export / Technical Specs -->
+            <div class="card">
+              <div class="card-header">
+                <h3>Technical Diagnostics</h3>
+                <span class="text-muted">Browser environment stats</span>
+              </div>
+              <div class="card-body">
+                <div class="diagnostics-list">
+                  <div class="diag-row">
+                    <span>IndexedDB API Status:</span>
+                    <span class="badge badge-success">Supported</span>
+                  </div>
+                  <div class="diag-row">
+                    <span>Data Persistence Mode:</span>
+                    <span class="badge badge-success" id="persistence-type">Persistent</span>
+                  </div>
+                  <div class="diag-row">
+                    <span>User Agent:</span>
+                    <span class="ua-text" id="browser-ua">Unknown Browser</span>
+                  </div>
+                  <div class="diag-row">
+                    <span>Screen Resolution:</span>
+                    <span id="screen-resolution">0x0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="notification-toast hidden" id="notification-toast">
+    <div class="toast-content">
+      <i class="fa-solid fa-bell" id="toast-icon"></i>
+      <div class="toast-text-group">
+        <span class="toast-title" id="toast-title">Notification</span>
+        <p class="toast-body" id="toast-body">Message detail here</p>
+      </div>
+    </div>
+    <button class="toast-close" id="toast-close-btn">&times;</button>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="index.js"></script>
+</body>
+</html>
