@@ -335,7 +335,7 @@ class ParticleSystem {
       this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       this.ctx.fillStyle = p.color.replace(/[\d.]+\)$/, p.alpha + ')');
       this.ctx.shadowBlur = p.size * 2;
-      this.ctx.shadowColor = p.fillStyle;
+      this.ctx.shadowColor = this.ctx.fillStyle;
       this.ctx.fill();
       this.ctx.shadowBlur = 0; // reset
     });
@@ -754,6 +754,25 @@ async function runSpeedTest() {
 // -------------------------------------------------------------
 // PING TEST IMPLEMENTATIONS
 // -------------------------------------------------------------
+function updatePingStatsUI() {
+  const tempPing = state.currentTest.pingData.reduce((a, b) => a + b, 0) / state.currentTest.pingData.length;
+  let tempJitter = 0;
+  if (state.currentTest.pingData.length > 1) {
+    let diffSum = 0;
+    for (let i = 1; i < state.currentTest.pingData.length; i++) {
+      diffSum += Math.abs(state.currentTest.pingData[i] - state.currentTest.pingData[i-1]);
+    }
+    tempJitter = diffSum / (state.currentTest.pingData.length - 1);
+  }
+  
+  // Update displays
+  document.getElementById('ping-val').textContent = tempPing.toFixed(0);
+  document.getElementById('jitter-val').textContent = tempJitter.toFixed(1);
+  document.getElementById('current-speed').textContent = tempPing.toFixed(0);
+  
+  speedGauge.setSpeed(tempPing); // needle moves in proportion to ms response
+}
+
 async function runRealPing() {
   const pingUrl = state.activeServer.pingUrl;
   const pingsCount = 10;
@@ -771,23 +790,7 @@ async function runRealPing() {
       sparklineGraph.addPoint(duration);
       particleSystem.triggerPulse();
       
-      // Calculate current rolling stats
-      const tempPing = state.currentTest.pingData.reduce((a, b) => a + b, 0) / state.currentTest.pingData.length;
-      let tempJitter = 0;
-      if (state.currentTest.pingData.length > 1) {
-        let diffSum = 0;
-        for (let i = 1; i < state.currentTest.pingData.length; i++) {
-          diffSum += Math.abs(state.currentTest.pingData[i] - state.currentTest.pingData[i-1]);
-        }
-        tempJitter = diffSum / (state.currentTest.pingData.length - 1);
-      }
-      
-      // Update displays
-      document.getElementById('ping-val').textContent = tempPing.toFixed(0);
-      document.getElementById('jitter-val').textContent = tempJitter.toFixed(1);
-      document.getElementById('current-speed').textContent = tempPing.toFixed(0);
-      
-      speedGauge.setSpeed(tempPing); // needle moves in proportion to ms response
+      updatePingStatsUI();
       
       // Pause briefly between pings
       await new Promise(r => setTimeout(r, 120));
@@ -798,6 +801,10 @@ async function runRealPing() {
       const duration = 200 + Math.random()*200; // CORS blocked fallback
       state.currentTest.pingData.push(duration);
       sparklineGraph.addPoint(duration);
+      particleSystem.triggerPulse();
+      
+      updatePingStatsUI();
+      
       await new Promise(r => setTimeout(r, 200));
     }
   }
@@ -836,20 +843,7 @@ async function runSimulatedPing(profile) {
     sparklineGraph.addPoint(duration);
     particleSystem.triggerPulse();
     
-    const tempPing = state.currentTest.pingData.reduce((a, b) => a + b, 0) / state.currentTest.pingData.length;
-    let tempJitter = 0;
-    if (state.currentTest.pingData.length > 1) {
-      let diffSum = 0;
-      for (let i = 1; i < state.currentTest.pingData.length; i++) {
-        diffSum += Math.abs(state.currentTest.pingData[i] - state.currentTest.pingData[i-1]);
-      }
-      tempJitter = diffSum / (state.currentTest.pingData.length - 1);
-    }
-    
-    document.getElementById('ping-val').textContent = tempPing.toFixed(0);
-    document.getElementById('jitter-val').textContent = tempJitter.toFixed(1);
-    document.getElementById('current-speed').textContent = tempPing.toFixed(0);
-    speedGauge.setSpeed(tempPing);
+    updatePingStatsUI();
     
     await new Promise(r => setTimeout(r, 120));
   }
@@ -1025,9 +1019,13 @@ async function runRealUpload() {
   let totalUploadedBytes = 0;
   const speedSamples = [];
   
-  // Generate dummy array data once
+  // Generate dummy array data once safely (getRandomValues has 65536 bytes limit per call)
   const dummyBuffer = new Uint8Array(5 * 1024 * 1024); // max dummy payload is 5MB
-  crypto.getRandomValues(dummyBuffer);
+  const chunkSize = 65536;
+  for (let offset = 0; offset < dummyBuffer.length; offset += chunkSize) {
+    const chunk = dummyBuffer.subarray(offset, Math.min(offset + chunkSize, dummyBuffer.length));
+    crypto.getRandomValues(chunk);
+  }
   
   while (performance.now() - startTestTime < maxTime) {
     if (state.currentTest.cancelRequested) return;
@@ -2421,6 +2419,11 @@ function initCursorFollower() {
   
   if (!dot || !ring) return;
   
+  // Disable cursor follower on touch devices
+  if (window.matchMedia('(hover: none) or (pointer: coarse)').matches) {
+    return;
+  }
+  
   let mouseX = -100;
   let mouseY = -100;
   let ringX = -100;
@@ -2428,6 +2431,7 @@ function initCursorFollower() {
   let dotX = -100;
   let dotY = -100;
   let isHidden = true;
+  let animationFrameId = null;
   
   // Track mouse movements
   window.addEventListener('mousemove', (e) => {
@@ -2440,22 +2444,28 @@ function initCursorFollower() {
       ringY = mouseY;
       dotX = mouseX;
       dotY = mouseY;
-      dot.style.display = 'block';
-      ring.style.display = 'block';
+      dot.classList.add('visible');
+      ring.classList.add('visible');
     }
-  });
+  }, { passive: true });
   
   // Hide if cursor leaves window boundaries
   document.addEventListener('mouseleave', () => {
     isHidden = true;
-    dot.style.display = 'none';
-    ring.style.display = 'none';
+    dot.classList.remove('visible');
+    ring.classList.remove('visible');
   });
   
-  document.addEventListener('mouseenter', () => {
+  document.addEventListener('mouseenter', (e) => {
     isHidden = false;
-    dot.style.display = 'block';
-    ring.style.display = 'block';
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+    ringX = mouseX;
+    ringY = mouseY;
+    dotX = mouseX;
+    dotY = mouseY;
+    dot.classList.add('visible');
+    ring.classList.add('visible');
   });
   
   // Animation update frame
@@ -2475,24 +2485,33 @@ function initCursorFollower() {
       ring.style.top = `${ringY}px`;
     }
     
-    requestAnimationFrame(updateCursor);
+    animationFrameId = requestAnimationFrame(updateCursor);
   }
   
   // Start loop
-  requestAnimationFrame(updateCursor);
+  animationFrameId = requestAnimationFrame(updateCursor);
   
   // Hover effect using event delegation
   const hoverSelector = 'a, button, select, input, label, .btn, .nav-item, .isp-row, .btn-delete-test, .toggle-switch, .btn-toggle, tr';
   
   document.addEventListener('mouseover', (e) => {
-    if (e.target.closest(hoverSelector)) {
-      dot.classList.add('hovering');
-      ring.classList.add('hovering');
+    // Make sure e.target is an Element before calling closest
+    if (e.target && typeof e.target.closest === 'function') {
+      if (e.target.closest(hoverSelector)) {
+        dot.classList.add('hovering');
+        ring.classList.add('hovering');
+      }
     }
   });
   
   document.addEventListener('mouseout', (e) => {
-    if (!e.relatedTarget || !e.relatedTarget.closest(hoverSelector)) {
+    // Only remove hovering if we are not moving to another hoverable element
+    if (e.relatedTarget && typeof e.relatedTarget.closest === 'function') {
+      if (!e.relatedTarget.closest(hoverSelector)) {
+        dot.classList.remove('hovering');
+        ring.classList.remove('hovering');
+      }
+    } else if (!e.relatedTarget) {
       dot.classList.remove('hovering');
       ring.classList.remove('hovering');
     }
